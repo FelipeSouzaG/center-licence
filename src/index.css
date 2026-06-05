@@ -587,7 +587,9 @@ textarea:focus {
 .lead-section-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .lead-form-grid {
@@ -650,6 +652,20 @@ textarea:focus {
 
 .lead-campaign-item code {
   overflow-wrap: anywhere;
+}
+
+.lead-feed-url,
+.lead-scan-status {
+  overflow-wrap: anywhere;
+}
+
+.lead-feed-url {
+  color: #116b8d;
+  font-weight: 800;
+}
+
+.lead-scan-status {
+  color: var(--ink-soft);
 }
 
 .lead-table-wrap table {
