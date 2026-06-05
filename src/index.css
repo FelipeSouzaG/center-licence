@@ -154,7 +154,10 @@ select {
 
 .auth-form input,
 .modal-form input,
+.modal-form select,
 .row-price-editor input,
+.lead-form-grid input,
+.lead-form-grid select,
 .tenant-filters select,
 textarea {
   border: 1px solid var(--line);
@@ -166,7 +169,10 @@ textarea {
 
 .auth-form input:focus,
 .modal-form input:focus,
+.modal-form select:focus,
 .row-price-editor input:focus,
+.lead-form-grid input:focus,
+.lead-form-grid select:focus,
 .tenant-filters select:focus,
 textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--brand) 33%, white);
@@ -467,6 +473,178 @@ textarea:focus {
 .tenant-filters-grid input,
 .tenant-filters-grid select {
   width: 100%;
+}
+
+.lead-hunter-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.75rem;
+}
+
+.lead-hunter-layout > .panel:first-child,
+.lead-hunter-layout > .panel:last-child {
+  grid-column: 1 / -1;
+}
+
+.lead-summary-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.lead-summary-row div {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-soft);
+  padding: 0.68rem;
+}
+
+.lead-summary-row span,
+.lead-meta-line,
+.lead-next-action {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.lead-summary-row strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: "Sora", sans-serif;
+  font-size: 1.2rem;
+}
+
+.lead-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.lead-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.lead-form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+}
+
+.lead-form-grid textarea {
+  min-height: 96px;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.86rem;
+}
+
+.lead-form-wide,
+.lead-form-actions {
+  grid-column: 1 / -1;
+}
+
+.lead-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lead-campaign-list {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.lead-campaign-item {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8ff 100%);
+  padding: 0.72rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.lead-campaign-item div {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.lead-campaign-item span,
+.lead-link {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.lead-campaign-item code {
+  overflow-wrap: anywhere;
+}
+
+.lead-table-wrap table {
+  min-width: 1120px;
+}
+
+.lead-pain,
+.lead-message-preview {
+  margin: 0;
+  color: var(--ink);
+  max-width: 360px;
+}
+
+.lead-message-preview {
+  max-height: 110px;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.lead-next-action {
+  margin-top: 0.45rem;
+  max-width: 360px;
+}
+
+.lead-score {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+}
+
+.lead-score strong {
+  font-family: "Sora", sans-serif;
+  font-size: 1.2rem;
+}
+
+.lead-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  max-width: 360px;
+}
+
+.lead-status-chip {
+  border: 1px solid #cbd8e7;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #405873;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.28rem 0.48rem;
+}
+
+.lead-status-chip.active {
+  background: #e6fbf4;
+  border-color: #a8ddc8;
+  color: var(--good);
+}
+
+.lead-link {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .table-wrap {
@@ -820,6 +998,14 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .lead-hunter-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-summary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .auth-shell {
     grid-template-columns: 1fr;
   }
@@ -888,6 +1074,21 @@ textarea {
 
   .mini-list {
     grid-template-columns: 1fr;
+  }
+
+  .lead-summary-row,
+  .lead-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-section-actions,
+  .lead-form-actions {
+    justify-content: stretch;
+  }
+
+  .lead-section-actions .btn,
+  .lead-form-actions .btn {
+    width: 100%;
   }
 
   .side-nav {
