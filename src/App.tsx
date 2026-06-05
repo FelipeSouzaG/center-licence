@@ -140,8 +140,12 @@ type LeadCampaign = {
   niche: string;
   source: LeadSource;
   search_query: string;
+  feed_url: string | null;
   cadence: LeadCadence;
   is_active: boolean;
+  last_checked_at: string | null;
+  last_scan_status: string | null;
+  last_scan_message: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -407,6 +411,7 @@ export default function App() {
     niche: "Qualquer negócio",
     source: "GOOGLE_ALERTS" as LeadSource,
     search_query: "",
+    feed_url: "",
     cadence: "DAILY" as LeadCadence,
     notes: "",
   });
@@ -953,6 +958,7 @@ export default function App() {
           ...leadCampaignForm,
           name,
           search_query: searchQuery,
+          feed_url: leadCampaignForm.feed_url.trim() || undefined,
           niche: leadCampaignForm.niche.trim() || "Qualquer negócio",
           notes: leadCampaignForm.notes.trim() || undefined,
         }),
@@ -962,6 +968,7 @@ export default function App() {
         niche: "Qualquer negócio",
         source: "GOOGLE_ALERTS",
         search_query: "",
+        feed_url: "",
         cadence: "DAILY",
         notes: "",
       });
@@ -969,6 +976,25 @@ export default function App() {
       addToast("Campanha cadastrada", "Novo radar de lead adicionado à central.", "success");
     } catch (err: any) {
       addToast("Falha na campanha", err?.message || "Não foi possível cadastrar a campanha.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRunLeadScan = async () => {
+    try {
+      setLoading(true);
+      const data = await api<{ campaigns_scanned: number; leads_inserted: number }>("/api/lead-hunter/scan", {
+        method: "POST",
+      });
+      await loadLeadHunter();
+      addToast(
+        "Agente executado",
+        `${data.campaigns_scanned} campanhas varridas e ${data.leads_inserted} leads novos capturados.`,
+        "success",
+      );
+    } catch (err: any) {
+      addToast("Falha no agente", err?.message || "Não foi possível executar a varredura agora.", "error");
     } finally {
       setLoading(false);
     }
@@ -1566,6 +1592,7 @@ export default function App() {
             handleCreateLeadOpportunity={handleCreateLeadOpportunity}
             handleLeadCampaignSelection={handleLeadCampaignSelection}
             handleRegenerateLead={handleRegenerateLead}
+            handleRunLeadScan={handleRunLeadScan}
             handleSeedLeadCampaigns={handleSeedLeadCampaigns}
             handleUpdateLeadStatus={handleUpdateLeadStatus}
             leadCadenceOptions={leadCadenceOptions}
