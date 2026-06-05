@@ -943,7 +943,9 @@ export default function App() {
 
   const handleCreateLeadCampaign = async (event: React.FormEvent) => {
     event.preventDefault();
-    const name = leadCampaignForm.name.trim();
+    const name =
+      leadCampaignForm.name.trim() ||
+      `${leadSourceLabels[leadCampaignForm.source]} - ${leadCampaignForm.search_query.trim().slice(0, 48) || "fonte conectada"}`;
     const searchQuery = leadCampaignForm.search_query.trim();
     if (!name || searchQuery.length < 3) {
       addToast("Campanha incompleta", "Informe nome e termo de busca.", "error");
@@ -984,17 +986,21 @@ export default function App() {
   const handleRunLeadScan = async () => {
     try {
       setLoading(true);
-      const data = await api<{ campaigns_scanned: number; leads_inserted: number }>("/api/lead-hunter/scan", {
-        method: "POST",
-      });
+      const data = await api<{ campaigns_scanned: number; leads_inserted: number; campaigns_seeded: number; message: string }>(
+        "/api/lead-hunter/agent/start",
+        {
+          method: "POST",
+        },
+      );
       await loadLeadHunter();
       addToast(
-        "Agente executado",
-        `${data.campaigns_scanned} campanhas varridas e ${data.leads_inserted} leads novos capturados.`,
+        "Agente iniciado",
+        data.message ||
+          `${data.campaigns_seeded} termos preparados, ${data.campaigns_scanned} fontes varridas e ${data.leads_inserted} leads novos.`,
         "success",
       );
     } catch (err: any) {
-      addToast("Falha no agente", err?.message || "Não foi possível executar a varredura agora.", "error");
+      addToast("Falha no agente", err?.message || "Não foi possível iniciar o agente agora.", "error");
     } finally {
       setLoading(false);
     }
