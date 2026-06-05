@@ -1,6 +1,6 @@
-import { ClipboardList, Copy, MessageSquare, PlusCircle, RefreshCw, Search, Sparkles, Target } from "lucide-react";
+import { Bot, ClipboardList, Copy, MessageSquare, PlusCircle, RefreshCw, Search, Sparkles, Target } from "lucide-react";
 import type React from "react";
-import { Badge, Card, leadCadenceLabels, leadConsentLabels, leadSourceLabels, leadStatusLabels } from "./tabShared";
+import { Badge, Card, formatDate, leadCadenceLabels, leadConsentLabels, leadSourceLabels, leadStatusLabels } from "./tabShared";
 
 type LeadSource = "GOOGLE_ALERTS" | "TALKWALKER" | "F5BOT" | "FACEBOOK_PUBLIC" | "YOUTUBE" | "INSTAGRAM_TIKTOK" | "MANUAL" | "OTHER";
 type LeadCadence = "REALTIME" | "DAILY" | "WEEKLY" | "MANUAL";
@@ -14,8 +14,12 @@ type LeadCampaign = {
   niche: string;
   source: LeadSource;
   search_query: string;
+  feed_url: string | null;
   cadence: LeadCadence;
   is_active: boolean;
+  last_checked_at: string | null;
+  last_scan_status: string | null;
+  last_scan_message: string | null;
   notes: string | null;
 };
 
@@ -41,6 +45,7 @@ type LeadCampaignForm = {
   niche: string;
   source: LeadSource;
   search_query: string;
+  feed_url: string;
   cadence: LeadCadence;
   notes: string;
 };
@@ -88,6 +93,7 @@ type Props = {
   setLeadForm: React.Dispatch<React.SetStateAction<LeadForm>>;
   setLeadStatusFilter: (value: LeadStatus | "") => void;
   handleSeedLeadCampaigns: () => void;
+  handleRunLeadScan: () => void;
   handleCreateLeadCampaign: (event: React.FormEvent) => void;
   handleLeadCampaignSelection: (campaignId: string) => void;
   handleCreateLeadOpportunity: (event: React.FormEvent) => void;
@@ -114,6 +120,7 @@ export function LeadHunterTab({
   setLeadForm,
   setLeadStatusFilter,
   handleSeedLeadCampaigns,
+  handleRunLeadScan,
   handleCreateLeadCampaign,
   handleLeadCampaignSelection,
   handleCreateLeadOpportunity,
@@ -127,17 +134,17 @@ export function LeadHunterTab({
     <section className="lead-command-center">
       <section className="lead-hero-panel">
         <div>
-          <span className="lead-eyebrow">Captação orgânica assistida</span>
+          <span className="lead-eyebrow">Agente caçador de leads</span>
           <h2>Encontre pessoas dizendo que precisam de um sistema.</h2>
           <p>
-            A regra é simples: monitore frases de intenção, registre o achado, deixe o agente priorizar e aborde com uma mensagem humana.
+            Conecte fontes abertas, deixe o backend monitorar automaticamente e transforme sinais reais de dor em oportunidades.
           </p>
         </div>
         <div className="lead-hero-steps" aria-label="Fluxo de uso">
-          <span>1. Configurar alertas</span>
-          <span>2. Capturar frase real</span>
-          <span>3. Copiar abordagem</span>
-          <span>4. Levar para diagnóstico</span>
+          <span>1. Criar campanha</span>
+          <span>2. Conectar feed</span>
+          <span>3. Agente monitora</span>
+          <span>4. Inbox prioriza</span>
         </div>
       </section>
 
@@ -177,6 +184,9 @@ export function LeadHunterTab({
       <section className="lead-split">
         <Card title="Campanhas de busca" subtitle="Termos que pessoas usam quando estão procurando software" icon={<Target size={16} />}>
           <div className="lead-section-actions">
+            <button className="btn btn-primary" disabled={loading} onClick={handleRunLeadScan} type="button">
+              <Bot size={15} /> Rodar agente agora
+            </button>
             <button className="btn btn-secondary" disabled={loading} onClick={handleSeedLeadCampaigns} type="button">
               <Sparkles size={15} /> Criar termos base
             </button>
@@ -228,6 +238,14 @@ export function LeadHunterTab({
               />
             </label>
             <label className="lead-form-wide">
+              Feed RSS/Atom conectado
+              <input
+                onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, feed_url: event.target.value }))}
+                placeholder="https://exemplo.com/alertas/rss.xml"
+                value={leadCampaignForm.feed_url}
+              />
+            </label>
+            <label className="lead-form-wide">
               Observações
               <input
                 onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, notes: event.target.value }))}
@@ -251,11 +269,19 @@ export function LeadHunterTab({
                     {campaign.niche || "Qualquer negócio"} · {leadSourceLabels[campaign.source]} · {leadCadenceLabels[campaign.cadence]}
                   </span>
                   <code>{campaign.search_query}</code>
+                  {campaign.feed_url ? <span className="lead-feed-url">Feed conectado: {campaign.feed_url}</span> : null}
+                  <span className="lead-scan-status">
+                    Última varredura: {formatDate(campaign.last_checked_at)}
+                    {campaign.last_scan_message ? ` · ${campaign.last_scan_message}` : ""}
+                  </span>
                 </div>
-                <Badge label={campaign.is_active ? "ATIVA" : "PAUSADA"} tone={campaign.is_active ? "good" : "neutral"} />
+                <Badge
+                  label={campaign.feed_url ? (campaign.last_scan_status === "error" ? "ERRO NO FEED" : "MONITORANDO") : campaign.is_active ? "SEM FEED" : "PAUSADA"}
+                  tone={campaign.feed_url ? (campaign.last_scan_status === "error" ? "danger" : "good") : campaign.is_active ? "warn" : "neutral"}
+                />
               </article>
             ))}
-            {leadCampaigns.length === 0 ? <p className="muted">Crie os termos base e copie para Google Alerts/Talkwalker/F5Bot.</p> : null}
+            {leadCampaigns.length === 0 ? <p className="muted">Crie campanhas base e conecte feeds para o agente começar a monitorar.</p> : null}
           </div>
         </Card>
 
