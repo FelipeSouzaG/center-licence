@@ -3,15 +3,20 @@ import { api, ApiError } from "./lib/api";
 import {
   AlertTriangle,
   Building2,
+  ClipboardList,
+  Copy,
   CreditCard,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   PlusCircle,
   ReceiptText,
   RefreshCw,
+  Search,
   Settings,
   ShieldCheck,
   Sparkles,
+  Target,
   Trash2,
   Users,
 } from "lucide-react";
@@ -111,7 +116,64 @@ type OwnerEnvironment = {
   };
 };
 
-type ViewKey = "overview" | "tenants" | "owner_home" | "owner_payments" | "owner_system";
+type LeadSource =
+  | "GOOGLE_ALERTS"
+  | "TALKWALKER"
+  | "F5BOT"
+  | "FACEBOOK_PUBLIC"
+  | "YOUTUBE"
+  | "INSTAGRAM_TIKTOK"
+  | "MANUAL"
+  | "OTHER";
+
+type LeadCadence = "REALTIME" | "DAILY" | "WEEKLY" | "MANUAL";
+type LeadTemperature = "HOT" | "WARM" | "COLD";
+type LeadStatus = "CAPTURED" | "OUTREACH_READY" | "CONTACTED" | "REPLIED" | "DIAGNOSIS" | "TRIAL" | "RENEWED" | "LOST";
+type LeadConsentStatus = "UNKNOWN" | "INBOUND" | "OPT_IN" | "PUBLIC_REPLY_ONLY" | "NOT_ALLOWED";
+
+type LeadCampaign = {
+  id: string;
+  name: string;
+  niche: string;
+  source: LeadSource;
+  search_query: string;
+  cadence: LeadCadence;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type LeadOpportunity = {
+  id: string;
+  campaign_id: string | null;
+  source: LeadSource;
+  channel_url: string | null;
+  author_name: string | null;
+  contact_name: string | null;
+  contact_handle: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  business_name: string | null;
+  niche: string;
+  pain_phrase: string;
+  pain_summary: string | null;
+  intent_temperature: LeadTemperature;
+  score: number;
+  status: LeadStatus;
+  consent_status: LeadConsentStatus;
+  outreach_allowed: boolean;
+  suggested_message: string | null;
+  next_action: string | null;
+  demand_notes: string | null;
+  last_contacted_at: string | null;
+  responded_at: string | null;
+  created_at: string;
+  updated_at: string;
+  lead_campaigns?: { name: string; search_query: string } | null;
+};
+
+type ViewKey = "overview" | "tenants" | "lead_hunter" | "owner_home" | "owner_payments" | "owner_system";
 
 type ToastTone = "success" | "error" | "info";
 
@@ -213,9 +275,52 @@ const billingModeLabels: Record<Tenant["billing_mode"], string> = {
   NORMAL: "Normal (cobrança mensal)",
 };
 
+const leadSourceLabels: Record<LeadSource, string> = {
+  GOOGLE_ALERTS: "Google Alerts",
+  TALKWALKER: "Talkwalker",
+  F5BOT: "F5Bot",
+  FACEBOOK_PUBLIC: "Facebook público",
+  YOUTUBE: "YouTube",
+  INSTAGRAM_TIKTOK: "Instagram/TikTok",
+  MANUAL: "Manual",
+  OTHER: "Outro",
+};
+
+const leadCadenceLabels: Record<LeadCadence, string> = {
+  REALTIME: "Quando acontecer",
+  DAILY: "Diário",
+  WEEKLY: "Semanal",
+  MANUAL: "Manual",
+};
+
+const leadStatusLabels: Record<LeadStatus, string> = {
+  CAPTURED: "Capturado",
+  OUTREACH_READY: "Abordagem pronta",
+  CONTACTED: "Contatado",
+  REPLIED: "Respondeu",
+  DIAGNOSIS: "Diagnóstico",
+  TRIAL: "Trial",
+  RENEWED: "Renovou",
+  LOST: "Perdido",
+};
+
+const leadConsentLabels: Record<LeadConsentStatus, string> = {
+  UNKNOWN: "Desconhecido",
+  INBOUND: "Inbound",
+  OPT_IN: "Opt-in",
+  PUBLIC_REPLY_ONLY: "Só resposta pública",
+  NOT_ALLOWED: "Não permitido",
+};
+
+const leadSourceOptions = Object.keys(leadSourceLabels) as LeadSource[];
+const leadCadenceOptions = Object.keys(leadCadenceLabels) as LeadCadence[];
+const leadStatusOptions = Object.keys(leadStatusLabels) as LeadStatus[];
+const leadConsentOptions = Object.keys(leadConsentLabels) as LeadConsentStatus[];
+
 const adminViewOptions: Array<{ key: ViewKey; label: string; icon: React.ReactNode }> = [
   { key: "overview", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
   { key: "tenants", label: "Tenants", icon: <Users size={16} /> },
+  { key: "lead_hunter", label: "Caça de Leads", icon: <Target size={16} /> },
 ];
 
 const ownerViewOptions: Array<{ key: ViewKey; label: string; icon: React.ReactNode }> = [
@@ -229,10 +334,13 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [leadCampaigns, setLeadCampaigns] = useState<LeadCampaign[]>([]);
+  const [leadOpportunities, setLeadOpportunities] = useState<LeadOpportunity[]>([]);
 
   const [view, setView] = useState<ViewKey>("overview");
   const [tenantSearch, setTenantSearch] = useState("");
   const [dueDayFilter, setDueDayFilter] = useState("");
+  const [leadStatusFilter, setLeadStatusFilter] = useState<LeadStatus | "">("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -290,6 +398,30 @@ export default function App() {
     email: "",
     current_password: "",
     new_password: "",
+  });
+  const [leadCampaignForm, setLeadCampaignForm] = useState({
+    name: "",
+    niche: "Confeitaria",
+    source: "GOOGLE_ALERTS" as LeadSource,
+    search_query: "",
+    cadence: "DAILY" as LeadCadence,
+    notes: "",
+  });
+  const [leadForm, setLeadForm] = useState({
+    campaign_id: "",
+    source: "MANUAL" as LeadSource,
+    channel_url: "",
+    author_name: "",
+    contact_name: "",
+    contact_handle: "",
+    contact_phone: "",
+    contact_email: "",
+    business_name: "",
+    niche: "",
+    pain_phrase: "",
+    pain_summary: "",
+    consent_status: "UNKNOWN" as LeadConsentStatus,
+    demand_notes: "",
   });
 
   const currentTenant = useMemo(() => {
@@ -368,6 +500,32 @@ export default function App() {
     };
   }, [payments, tenants]);
 
+  const filteredLeadOpportunities = useMemo(() => {
+    if (!leadStatusFilter) return leadOpportunities;
+    return leadOpportunities.filter((lead) => lead.status === leadStatusFilter);
+  }, [leadOpportunities, leadStatusFilter]);
+
+  const leadStats = useMemo(() => {
+    const hot = leadOpportunities.filter((lead) => lead.intent_temperature === "HOT").length;
+    const ready = leadOpportunities.filter((lead) => lead.status === "OUTREACH_READY").length;
+    const trial = leadOpportunities.filter((lead) => lead.status === "TRIAL").length;
+    const renewed = leadOpportunities.filter((lead) => lead.status === "RENEWED").length;
+    const averageScore =
+      leadOpportunities.length === 0
+        ? 0
+        : Math.round(leadOpportunities.reduce((acc, lead) => acc + Number(lead.score || 0), 0) / leadOpportunities.length);
+
+    return {
+      total: leadOpportunities.length,
+      hot,
+      ready,
+      trial,
+      renewed,
+      averageScore,
+      activeCampaigns: leadCampaigns.filter((campaign) => campaign.is_active).length,
+    };
+  }, [leadCampaigns, leadOpportunities]);
+
   const openConfirm = (
     title: string,
     description: string,
@@ -439,13 +597,21 @@ export default function App() {
     return data.user;
   };
 
+  const loadLeadHunter = async () => {
+    const [campaigns, leads] = await Promise.all([
+      api<LeadCampaign[]>("/api/lead-hunter/campaigns"),
+      api<LeadOpportunity[]>("/api/lead-hunter/leads"),
+    ]);
+    setLeadCampaigns(campaigns);
+    setLeadOpportunities(leads);
+  };
+
   const refreshAll = async () => {
     if (!user) return;
     try {
       setLoading(true);
       if (user.role === "ADMIN") {
-        await loadTenants();
-        await loadPayments(null);
+        await Promise.all([loadTenants(), loadPayments(null), loadLeadHunter()]);
       } else {
         await Promise.all([loadTenants(), loadPayments(user.tenant_id), loadOwnerEnvironment()]);
       }
@@ -492,6 +658,7 @@ export default function App() {
         } else {
           setView("overview");
           setOwnerEnvironment(null);
+          await loadLeadHunter();
         }
       } catch (err: unknown) {
         openRequestErrorModal(err, "Falha ao carregar ambiente");
@@ -552,6 +719,8 @@ export default function App() {
     setProfile(null);
     setTenants([]);
     setPayments([]);
+    setLeadCampaigns([]);
+    setLeadOpportunities([]);
     setOwnerEnvironment(null);
     setView("overview");
     setProfileForm({ email: "", current_password: "", new_password: "" });
@@ -742,6 +911,162 @@ export default function App() {
       addToast("Erro ao atualizar perfil", err instanceof Error ? err.message : "Não foi possível atualizar os dados do usuário.", "error");
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleSeedLeadCampaigns = async () => {
+    try {
+      setLoading(true);
+      const data = await api<{ inserted: number; message?: string }>("/api/lead-hunter/campaigns/seed", {
+        method: "POST",
+      });
+      await loadLeadHunter();
+      addToast(
+        data.inserted > 0 ? "Campanhas criadas" : "Campanhas já existem",
+        data.message || `${data.inserted} campanhas iniciais foram cadastradas.`,
+        "success",
+      );
+    } catch (err: any) {
+      addToast("Falha ao semear campanhas", err?.message || "Não foi possível criar campanhas iniciais.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateLeadCampaign = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = leadCampaignForm.name.trim();
+    const searchQuery = leadCampaignForm.search_query.trim();
+    if (!name || searchQuery.length < 3) {
+      addToast("Campanha incompleta", "Informe nome e termo de busca.", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api("/api/lead-hunter/campaigns", {
+        method: "POST",
+        body: JSON.stringify({
+          ...leadCampaignForm,
+          name,
+          search_query: searchQuery,
+          niche: leadCampaignForm.niche.trim() || "Negócio local",
+          notes: leadCampaignForm.notes.trim() || undefined,
+        }),
+      });
+      setLeadCampaignForm({
+        name: "",
+        niche: "Confeitaria",
+        source: "GOOGLE_ALERTS",
+        search_query: "",
+        cadence: "DAILY",
+        notes: "",
+      });
+      await loadLeadHunter();
+      addToast("Campanha cadastrada", "Novo radar de lead adicionado à central.", "success");
+    } catch (err: any) {
+      addToast("Falha na campanha", err?.message || "Não foi possível cadastrar a campanha.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLeadCampaignSelection = (campaignId: string) => {
+    const campaign = leadCampaigns.find((item) => item.id === campaignId);
+    setLeadForm((prev) => ({
+      ...prev,
+      campaign_id: campaignId,
+      source: campaign?.source || prev.source,
+      niche: campaign?.niche || prev.niche,
+    }));
+  };
+
+  const handleCreateLeadOpportunity = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const painPhrase = leadForm.pain_phrase.trim();
+    if (painPhrase.length < 3) {
+      addToast("Dor obrigatória", "Cole a frase real que o lead escreveu.", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api("/api/lead-hunter/leads", {
+        method: "POST",
+        body: JSON.stringify({
+          ...leadForm,
+          campaign_id: leadForm.campaign_id || undefined,
+          channel_url: leadForm.channel_url.trim() || undefined,
+          author_name: leadForm.author_name.trim() || undefined,
+          contact_name: leadForm.contact_name.trim() || undefined,
+          contact_handle: leadForm.contact_handle.trim() || undefined,
+          contact_phone: leadForm.contact_phone.trim() || undefined,
+          contact_email: leadForm.contact_email.trim() || undefined,
+          business_name: leadForm.business_name.trim() || undefined,
+          niche: leadForm.niche.trim() || undefined,
+          pain_phrase: painPhrase,
+          pain_summary: leadForm.pain_summary.trim() || undefined,
+          demand_notes: leadForm.demand_notes.trim() || undefined,
+        }),
+      });
+      setLeadForm({
+        campaign_id: "",
+        source: "MANUAL",
+        channel_url: "",
+        author_name: "",
+        contact_name: "",
+        contact_handle: "",
+        contact_phone: "",
+        contact_email: "",
+        business_name: "",
+        niche: "",
+        pain_phrase: "",
+        pain_summary: "",
+        consent_status: "UNKNOWN",
+        demand_notes: "",
+      });
+      await loadLeadHunter();
+      addToast("Lead capturado", "O agente pontuou e gerou a abordagem inicial.", "success");
+    } catch (err: any) {
+      addToast("Falha ao capturar lead", err?.message || "Não foi possível salvar a oportunidade.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateLeadStatus = async (leadId: string, status: LeadStatus) => {
+    try {
+      await api(`/api/lead-hunter/leads/${leadId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      await loadLeadHunter();
+      addToast("Status atualizado", `Lead movido para ${leadStatusLabels[status]}.`, "success");
+    } catch (err: any) {
+      addToast("Falha ao atualizar lead", err?.message || "Não foi possível avançar o funil.", "error");
+    }
+  };
+
+  const handleRegenerateLead = async (leadId: string) => {
+    try {
+      await api(`/api/lead-hunter/leads/${leadId}/regenerate`, { method: "POST" });
+      await loadLeadHunter();
+      addToast("Agente recalculou", "Score, próxima ação e abordagem foram atualizados.", "success");
+    } catch (err: any) {
+      addToast("Falha ao recalcular", err?.message || "Não foi possível recalcular o lead.", "error");
+    }
+  };
+
+  const handleCopyLeadMessage = async (message: string | null) => {
+    if (!message) {
+      addToast("Sem mensagem", "Este lead ainda não possui abordagem sugerida.", "error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(message);
+      addToast("Mensagem copiada", "Revise e envie manualmente no canal permitido.", "success");
+    } catch {
+      addToast("Não foi possível copiar", "Selecione o texto da abordagem manualmente.", "error");
     }
   };
 
@@ -982,6 +1307,19 @@ export default function App() {
     if (status === "approved") return "good";
     if (["pending", "created", "authorized", "in_process", "in_mediation"].includes(status)) return "warn";
     if (["rejected", "cancelled", "charged_back", "refunded"].includes(status)) return "danger";
+    return "neutral";
+  };
+
+  const toneFromLeadStatus = (status: LeadStatus): "good" | "warn" | "danger" | "neutral" => {
+    if (status === "RENEWED") return "good";
+    if (["OUTREACH_READY", "REPLIED", "DIAGNOSIS", "TRIAL"].includes(status)) return "warn";
+    if (status === "LOST") return "danger";
+    return "neutral";
+  };
+
+  const toneFromLeadTemperature = (temperature: LeadTemperature): "good" | "warn" | "danger" | "neutral" => {
+    if (temperature === "HOT") return "danger";
+    if (temperature === "WARM") return "warn";
     return "neutral";
   };
 
@@ -1359,6 +1697,325 @@ export default function App() {
               </table>
             </div>
           </Card>
+        ) : null}
+
+        {user.role === "ADMIN" && view === "lead_hunter" ? (
+          <section className="lead-hunter-layout">
+            <Card title="Motor de captação" subtitle="Radar orgânico para dores reais antes do trial" icon={<Search size={16} />}>
+              <div className="lead-summary-row">
+                <div>
+                  <span>Campanhas ativas</span>
+                  <strong>{leadStats.activeCampaigns}</strong>
+                </div>
+                <div>
+                  <span>Leads capturados</span>
+                  <strong>{leadStats.total}</strong>
+                </div>
+                <div>
+                  <span>Quentes</span>
+                  <strong>{leadStats.hot}</strong>
+                </div>
+                <div>
+                  <span>Score médio</span>
+                  <strong>{leadStats.averageScore}</strong>
+                </div>
+                <div>
+                  <span>Prontos</span>
+                  <strong>{leadStats.ready}</strong>
+                </div>
+                <div>
+                  <span>Trials</span>
+                  <strong>{leadStats.trial}</strong>
+                </div>
+                <div>
+                  <span>Renovados</span>
+                  <strong>{leadStats.renewed}</strong>
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Campanhas de alerta" subtitle="Termos para Google Alerts, Talkwalker, F5Bot e busca assistida" icon={<Target size={16} />}>
+              <div className="lead-section-actions">
+                <button className="btn btn-secondary" disabled={loading} onClick={handleSeedLeadCampaigns} type="button">
+                  <Sparkles size={15} /> Criar campanhas iniciais
+                </button>
+              </div>
+              <form className="lead-form-grid" onSubmit={handleCreateLeadCampaign}>
+                <label>
+                  Nome
+                  <input
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Ex: LetSweet - pedidos WhatsApp"
+                    value={leadCampaignForm.name}
+                  />
+                </label>
+                <label>
+                  Nicho
+                  <input
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, niche: event.target.value }))}
+                    placeholder="Confeitaria, Buffet..."
+                    value={leadCampaignForm.niche}
+                  />
+                </label>
+                <label>
+                  Fonte
+                  <select
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, source: event.target.value as LeadSource }))}
+                    value={leadCampaignForm.source}
+                  >
+                    {leadSourceOptions.map((source) => (
+                      <option key={source} value={source}>
+                        {leadSourceLabels[source]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Cadência
+                  <select
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, cadence: event.target.value as LeadCadence }))}
+                    value={leadCampaignForm.cadence}
+                  >
+                    {leadCadenceOptions.map((cadence) => (
+                      <option key={cadence} value={cadence}>
+                        {leadCadenceLabels[cadence]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="lead-form-wide">
+                  Termo de busca
+                  <input
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, search_query: event.target.value }))}
+                    placeholder={'"procuro sistema" "confeitaria"'}
+                    value={leadCampaignForm.search_query}
+                  />
+                </label>
+                <label className="lead-form-wide">
+                  Observações
+                  <input
+                    onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, notes: event.target.value }))}
+                    placeholder="Ex: busca manual em grupos públicos, sem DM automática"
+                    value={leadCampaignForm.notes}
+                  />
+                </label>
+                <div className="lead-form-actions">
+                  <button className="btn btn-primary" disabled={loading} type="submit">
+                    <PlusCircle size={15} /> Salvar campanha
+                  </button>
+                </div>
+              </form>
+
+              <div className="lead-campaign-list">
+                {leadCampaigns.map((campaign) => (
+                  <article className="lead-campaign-item" key={campaign.id}>
+                    <div>
+                      <strong>{campaign.name}</strong>
+                      <span>{campaign.niche} · {leadSourceLabels[campaign.source]} · {leadCadenceLabels[campaign.cadence]}</span>
+                      <code>{campaign.search_query}</code>
+                    </div>
+                    <Badge label={campaign.is_active ? "ATIVA" : "PAUSADA"} tone={campaign.is_active ? "good" : "neutral"} />
+                  </article>
+                ))}
+                {leadCampaigns.length === 0 ? <p className="muted">Nenhuma campanha cadastrada ainda.</p> : null}
+              </div>
+            </Card>
+
+            <Card title="Capturar achado" subtitle="Cole a frase real do lead e deixe o agente pontuar" icon={<ClipboardList size={16} />}>
+              <form className="lead-form-grid" onSubmit={handleCreateLeadOpportunity}>
+                <label>
+                  Campanha
+                  <select onChange={(event) => handleLeadCampaignSelection(event.target.value)} value={leadForm.campaign_id}>
+                    <option value="">Sem campanha</option>
+                    {leadCampaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id}>
+                        {campaign.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Fonte
+                  <select onChange={(event) => setLeadForm((prev) => ({ ...prev, source: event.target.value as LeadSource }))} value={leadForm.source}>
+                    {leadSourceOptions.map((source) => (
+                      <option key={source} value={source}>
+                        {leadSourceLabels[source]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Nicho
+                  <input
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, niche: event.target.value }))}
+                    placeholder="Detecta se ficar vazio"
+                    value={leadForm.niche}
+                  />
+                </label>
+                <label>
+                  Consentimento
+                  <select
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, consent_status: event.target.value as LeadConsentStatus }))}
+                    value={leadForm.consent_status}
+                  >
+                    {leadConsentOptions.map((consent) => (
+                      <option key={consent} value={consent}>
+                        {leadConsentLabels[consent]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="lead-form-wide">
+                  Frase real da dor
+                  <textarea
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, pain_phrase: event.target.value }))}
+                    placeholder="Cole exatamente o que a pessoa publicou ou disse..."
+                    required
+                    value={leadForm.pain_phrase}
+                  />
+                </label>
+                <label className="lead-form-wide">
+                  Resumo da dor
+                  <input
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, pain_summary: event.target.value }))}
+                    placeholder="Ex: pedidos se perdem no WhatsApp e ela usa planilha"
+                    value={leadForm.pain_summary}
+                  />
+                </label>
+                <label>
+                  Nome/autor
+                  <input onChange={(event) => setLeadForm((prev) => ({ ...prev, author_name: event.target.value }))} value={leadForm.author_name} />
+                </label>
+                <label>
+                  Negócio
+                  <input onChange={(event) => setLeadForm((prev) => ({ ...prev, business_name: event.target.value }))} value={leadForm.business_name} />
+                </label>
+                <label>
+                  Contato/handle
+                  <input onChange={(event) => setLeadForm((prev) => ({ ...prev, contact_handle: event.target.value }))} value={leadForm.contact_handle} />
+                </label>
+                <label>
+                  Telefone
+                  <input inputMode="tel" onChange={(event) => setLeadForm((prev) => ({ ...prev, contact_phone: event.target.value }))} value={leadForm.contact_phone} />
+                </label>
+                <label className="lead-form-wide">
+                  Link do achado
+                  <input
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, channel_url: event.target.value }))}
+                    placeholder="URL pública do post, alerta ou conversa"
+                    value={leadForm.channel_url}
+                  />
+                </label>
+                <label className="lead-form-wide">
+                  Notas para diagnóstico
+                  <input
+                    onChange={(event) => setLeadForm((prev) => ({ ...prev, demand_notes: event.target.value }))}
+                    placeholder="Contexto, restrições, ideia de trial..."
+                    value={leadForm.demand_notes}
+                  />
+                </label>
+                <div className="lead-form-actions">
+                  <button className="btn btn-primary" disabled={loading} type="submit">
+                    <MessageSquare size={15} /> Capturar lead
+                  </button>
+                </div>
+              </form>
+            </Card>
+
+            <Card title="Inbox priorizado" subtitle="Score, abordagem sugerida e avanço do funil" icon={<MessageSquare size={16} />}>
+              <div className="tenant-filters">
+                <div className="tenant-filters-grid">
+                  <label>
+                    Filtrar status
+                    <select onChange={(event) => setLeadStatusFilter(event.target.value as LeadStatus | "")} value={leadStatusFilter}>
+                      <option value="">Todos</option>
+                      {leadStatusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {leadStatusLabels[status]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="table-wrap lead-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Lead</th>
+                      <th>Dor</th>
+                      <th>Score</th>
+                      <th>Status</th>
+                      <th>Abordagem</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLeadOpportunities.map((lead) => (
+                      <tr key={lead.id}>
+                        <td>
+                          <strong>{lead.business_name || lead.contact_name || lead.author_name || "Lead sem nome"}</strong>
+                          <span className="lead-meta-line">{lead.niche} · {leadSourceLabels[lead.source]}</span>
+                          {lead.channel_url ? (
+                            <a className="lead-link" href={lead.channel_url} rel="noreferrer" target="_blank">
+                              Abrir origem
+                            </a>
+                          ) : null}
+                        </td>
+                        <td>
+                          <p className="lead-pain">{lead.pain_phrase}</p>
+                          {lead.next_action ? <span className="lead-next-action">{lead.next_action}</span> : null}
+                        </td>
+                        <td>
+                          <div className="lead-score">
+                            <strong>{lead.score}</strong>
+                            <Badge label={lead.intent_temperature} tone={toneFromLeadTemperature(lead.intent_temperature)} />
+                          </div>
+                        </td>
+                        <td>
+                          <Badge label={leadStatusLabels[lead.status]} tone={toneFromLeadStatus(lead.status)} />
+                          <span className="lead-meta-line">{leadConsentLabels[lead.consent_status]}</span>
+                        </td>
+                        <td>
+                          <p className="lead-message-preview">{lead.suggested_message || "-"}</p>
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <button className="btn btn-secondary" onClick={() => handleCopyLeadMessage(lead.suggested_message)} type="button">
+                              <Copy size={15} /> Copiar
+                            </button>
+                            <button className="btn btn-ghost" onClick={() => handleRegenerateLead(lead.id)} type="button">
+                              <RefreshCw size={15} /> Recalcular
+                            </button>
+                          </div>
+                          <div className="lead-status-actions">
+                            {leadStatusOptions.map((status) => (
+                              <button
+                                className={lead.status === status ? "lead-status-chip active" : "lead-status-chip"}
+                                key={status}
+                                onClick={() => handleUpdateLeadStatus(lead.id, status)}
+                                type="button"
+                              >
+                                {leadStatusLabels[status]}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLeadOpportunities.length === 0 ? (
+                      <tr>
+                        <td colSpan={6}>
+                          <span className="muted">Nenhum lead encontrado nesse status.</span>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </section>
         ) : null}
 
         {user.role === "OWNER" && view === "owner_home" ? (
