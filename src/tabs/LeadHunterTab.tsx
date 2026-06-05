@@ -29,6 +29,9 @@ type LeadOpportunity = {
   channel_url: string | null;
   author_name: string | null;
   contact_name: string | null;
+  contact_handle: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
   business_name: string | null;
   niche: string;
   pain_phrase: string;
@@ -104,6 +107,36 @@ type Props = {
   toneFromLeadTemperature: (temperature: LeadTemperature) => "good" | "warn" | "danger" | "neutral";
 };
 
+const intentTerms = [
+  '"procuro sistema" OR "preciso de sistema"',
+  '"preciso sair da planilha"',
+  '"sistema para controlar pedidos"',
+  '"alguém indica sistema"',
+  '"software para controlar"',
+  '"quero automatizar" "empresa"',
+];
+
+const connectorCards = [
+  {
+    title: "Alertas e web aberta",
+    status: "Pronto para RSS/API",
+    detail: "Google Alerts, Talkwalker, F5Bot e fontes com feed entram no agente automatico.",
+    tone: "good" as const,
+  },
+  {
+    title: "Redes e comunidades",
+    status: "Precisa conector autorizado",
+    detail: "Facebook, Instagram, TikTok e grupos entram por API, permissao ou extensao assistida.",
+    tone: "warn" as const,
+  },
+  {
+    title: "WhatsApp Business",
+    status: "Somente inbound/opt-in",
+    detail: "Contato automatico deve usar conversa iniciada pelo cliente, opt-in ou template aprovado.",
+    tone: "neutral" as const,
+  },
+];
+
 export function LeadHunterTab({
   loading,
   leadStats,
@@ -135,16 +168,24 @@ export function LeadHunterTab({
       <section className="lead-hero-panel">
         <div>
           <span className="lead-eyebrow">Agente caçador de leads</span>
-          <h2>Encontre pessoas dizendo que precisam de um sistema.</h2>
+          <h2>Inicie a busca por pessoas que precisam de um sistema.</h2>
           <p>
-            Conecte fontes abertas, deixe o backend monitorar automaticamente e transforme sinais reais de dor em oportunidades.
+            O agente usa termos de intenção, consulta fontes conectadas, cria oportunidades e prioriza contatos para abordagem permitida.
           </p>
+          <div className="lead-agent-actions">
+            <button className="btn btn-primary" disabled={loading} onClick={handleRunLeadScan} type="button">
+              <Bot size={16} /> Iniciar agente
+            </button>
+            <button className="btn btn-secondary" disabled={loading} onClick={handleSeedLeadCampaigns} type="button">
+              <Sparkles size={15} /> Preparar termos
+            </button>
+          </div>
         </div>
         <div className="lead-hero-steps" aria-label="Fluxo de uso">
-          <span>1. Criar campanha</span>
-          <span>2. Conectar feed</span>
-          <span>3. Agente monitora</span>
-          <span>4. Inbox prioriza</span>
+          <span>1. Iniciar agente</span>
+          <span>2. Buscar sinais reais</span>
+          <span>3. Capturar contato</span>
+          <span>4. Abordar no canal permitido</span>
         </div>
       </section>
 
@@ -182,35 +223,30 @@ export function LeadHunterTab({
       </Card>
 
       <section className="lead-split">
-        <Card title="Campanhas de busca" subtitle="Termos que pessoas usam quando estão procurando software" icon={<Target size={16} />}>
-          <div className="lead-section-actions">
-            <button className="btn btn-primary" disabled={loading} onClick={handleRunLeadScan} type="button">
-              <Bot size={15} /> Rodar agente agora
-            </button>
-            <button className="btn btn-secondary" disabled={loading} onClick={handleSeedLeadCampaigns} type="button">
-              <Sparkles size={15} /> Criar termos base
-            </button>
+        <Card title="Entrada do agente" subtitle="Termos e fontes que alimentam a busca automatica" icon={<Target size={16} />}>
+          <div className="lead-term-grid">
+            {intentTerms.map((term) => (
+              <code className="lead-term-chip" key={term}>
+                {term}
+              </code>
+            ))}
           </div>
 
-          <form className="lead-form-grid" onSubmit={handleCreateLeadCampaign}>
+          <div className="lead-connector-grid">
+            {connectorCards.map((connector) => (
+              <article className="lead-connector-card" key={connector.title}>
+                <div>
+                  <strong>{connector.title}</strong>
+                  <span>{connector.detail}</span>
+                </div>
+                <Badge label={connector.status} tone={connector.tone} />
+              </article>
+            ))}
+          </div>
+
+          <form className="lead-form-grid lead-connector-form" onSubmit={handleCreateLeadCampaign}>
             <label>
-              Nome
-              <input
-                onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Ex: Procuro sistema"
-                value={leadCampaignForm.name}
-              />
-            </label>
-            <label>
-              Contexto opcional
-              <input
-                onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, niche: event.target.value }))}
-                placeholder="Qualquer negócio"
-                value={leadCampaignForm.niche}
-              />
-            </label>
-            <label>
-              Fonte
+              Fonte conectada
               <select onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, source: event.target.value as LeadSource }))} value={leadCampaignForm.source}>
                 {leadSourceOptions.map((source) => (
                   <option key={source} value={source}>
@@ -220,17 +256,7 @@ export function LeadHunterTab({
               </select>
             </label>
             <label>
-              Cadência
-              <select onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, cadence: event.target.value as LeadCadence }))} value={leadCampaignForm.cadence}>
-                {leadCadenceOptions.map((cadence) => (
-                  <option key={cadence} value={cadence}>
-                    {leadCadenceLabels[cadence]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="lead-form-wide">
-              Termo de busca
+              Termo
               <input
                 onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, search_query: event.target.value }))}
                 placeholder={'"procuro sistema" OR "preciso de sistema"'}
@@ -238,24 +264,24 @@ export function LeadHunterTab({
               />
             </label>
             <label className="lead-form-wide">
-              Feed RSS/Atom conectado
+              URL de feed/API
               <input
                 onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, feed_url: event.target.value }))}
-                placeholder="https://exemplo.com/alertas/rss.xml"
+                placeholder="RSS, Atom, webhook ou endpoint autorizado"
                 value={leadCampaignForm.feed_url}
               />
             </label>
             <label className="lead-form-wide">
-              Observações
+              Observações do conector
               <input
                 onChange={(event) => setLeadCampaignForm((prev) => ({ ...prev, notes: event.target.value }))}
-                placeholder="Onde usar, restrições do canal, tipo de lead esperado"
+                placeholder="Comunidade, permissao, regra de contato ou origem da autorizacao"
                 value={leadCampaignForm.notes}
               />
             </label>
             <div className="lead-form-actions">
-              <button className="btn btn-primary" disabled={loading} type="submit">
-                <PlusCircle size={15} /> Salvar campanha
+              <button className="btn btn-secondary" disabled={loading} type="submit">
+                <PlusCircle size={15} /> Conectar fonte
               </button>
             </div>
           </form>
@@ -266,26 +292,26 @@ export function LeadHunterTab({
                 <div>
                   <strong>{campaign.name}</strong>
                   <span>
-                    {campaign.niche || "Qualquer negócio"} · {leadSourceLabels[campaign.source]} · {leadCadenceLabels[campaign.cadence]}
+                    {leadSourceLabels[campaign.source]} · {leadCadenceLabels[campaign.cadence]}
                   </span>
                   <code>{campaign.search_query}</code>
-                  {campaign.feed_url ? <span className="lead-feed-url">Feed conectado: {campaign.feed_url}</span> : null}
+                  {campaign.feed_url ? <span className="lead-feed-url">Fonte: {campaign.feed_url}</span> : null}
                   <span className="lead-scan-status">
-                    Última varredura: {formatDate(campaign.last_checked_at)}
+                    Última busca: {formatDate(campaign.last_checked_at)}
                     {campaign.last_scan_message ? ` · ${campaign.last_scan_message}` : ""}
                   </span>
                 </div>
                 <Badge
-                  label={campaign.feed_url ? (campaign.last_scan_status === "error" ? "ERRO NO FEED" : "MONITORANDO") : campaign.is_active ? "SEM FEED" : "PAUSADA"}
+                  label={campaign.feed_url ? (campaign.last_scan_status === "error" ? "ERRO" : "CONECTADA") : campaign.is_active ? "AGUARDANDO FONTE" : "PAUSADA"}
                   tone={campaign.feed_url ? (campaign.last_scan_status === "error" ? "danger" : "good") : campaign.is_active ? "warn" : "neutral"}
                 />
               </article>
             ))}
-            {leadCampaigns.length === 0 ? <p className="muted">Crie campanhas base e conecte feeds para o agente começar a monitorar.</p> : null}
+            {leadCampaigns.length === 0 ? <p className="muted">Clique em Iniciar agente para preparar os termos base.</p> : null}
           </div>
         </Card>
 
-        <Card title="Capturar oportunidade" subtitle="Cole a frase real da pessoa. O agente cuida do score." icon={<ClipboardList size={16} />}>
+        <Card title="Entrada assistida" subtitle="Use quando a fonte ainda nao tem conector automatico" icon={<ClipboardList size={16} />}>
           <form className="lead-form-grid" onSubmit={handleCreateLeadOpportunity}>
             <label>
               Campanha
@@ -415,10 +441,15 @@ export function LeadHunterTab({
                   </a>
                 ) : null}
               </div>
-              <div className="lead-message-box">{lead.suggested_message || "Sem abordagem gerada."}</div>
+              <div className="lead-contact-grid">
+                <span>{lead.contact_phone || "Telefone nao capturado"}</span>
+                <span>{lead.contact_email || "Email nao capturado"}</span>
+                <span>{lead.contact_handle || "Handle nao capturado"}</span>
+              </div>
+              <div className="lead-message-box">{lead.suggested_message || "Aguardando conector de abordagem."}</div>
               <div className="row-actions">
                 <button className="btn btn-secondary" onClick={() => handleCopyLeadMessage(lead.suggested_message)} type="button">
-                  <Copy size={15} /> Copiar
+                  <Copy size={15} /> Copiar abordagem
                 </button>
                 <button className="btn btn-ghost" onClick={() => handleRegenerateLead(lead.id)} type="button">
                   <RefreshCw size={15} /> Recalcular
