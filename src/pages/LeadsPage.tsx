@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  CircleHelp,
   Clipboard,
   ExternalLink,
   Filter,
@@ -271,6 +272,24 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
         </button>
       </header>
 
+      <aside className="lead-usage-guide">
+        <div className="lead-usage-guide-icon">
+          <CircleHelp size={18} />
+        </div>
+        <div>
+          <h3>Como buscar leads</h3>
+          <ol>
+            <li>Clique em <strong>Buscar novos leads</strong>.</li>
+            <li>Informe nicho, cidade e a solução que deseja oferecer.</li>
+            <li>Confirme em <strong>Buscar leads</strong> e aguarde a conclusão.</li>
+          </ol>
+          <p>
+            O sistema consulta o Google Places, busca os detalhes, calcula o score, gera a oportunidade e a
+            mensagem e salva sem duplicar empresas. Nenhuma mensagem é enviada automaticamente.
+          </p>
+        </div>
+      </aside>
+
       {summary ? (
         <section aria-label="Resumo da última prospecção" className="lead-summary-grid">
           <article className="lead-summary-card">
@@ -407,7 +426,7 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
               {!loading &&
                 leads.map((lead) => (
                   <tr key={lead.id}>
-                    <td className="lead-name-cell">
+                    <td className="lead-name-cell" data-label="Empresa">
                       <strong>{lead.nome}</strong>
                       <span>{lead.segmento}</span>
                       <small>
@@ -415,7 +434,7 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
                       </small>
                       <p>{lead.oportunidade_detectada}</p>
                     </td>
-                    <td>
+                    <td data-label="Contato">
                       <div className="lead-contact">
                         <span>{lead.telefone || "Sem telefone"}</span>
                         {lead.website ? (
@@ -427,7 +446,7 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Avaliação">
                       {lead.rating !== null ? (
                         <>
                           <strong>{lead.rating.toFixed(1)}</strong>
@@ -437,13 +456,13 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
                         <span className="muted">Sem avaliação</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Score">
                       <span className={`lead-score ${scoreClass(lead.score)}`}>
                         <strong>{lead.score}</strong>
                         {scoreLabel(lead.score)}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <select
                         aria-label={`Status de ${lead.nome}`}
                         className="lead-status-select"
@@ -458,7 +477,7 @@ export default function LeadsPage({ onToast }: LeadsPageProps) {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Ações">
                       <div className="row-actions">
                         <button className="btn btn-secondary" onClick={() => setModal({ lead })} type="button">
                           Detalhes
