@@ -206,6 +206,7 @@ textarea:focus {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 268px 1fr;
+  align-items: start;
   gap: 0.7rem;
   padding: 0.7rem;
 }
@@ -222,6 +223,11 @@ textarea:focus {
   border: 1px solid rgba(212, 222, 234, 0.16);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
+  position: sticky;
+  top: 0.7rem;
+  height: calc(100vh - 1.4rem);
+  max-height: calc(100vh - 1.4rem);
+  overflow: hidden;
 }
 
 .brand-block {
@@ -253,7 +259,9 @@ textarea:focus {
 
 .side-nav {
   display: grid;
+  align-content: start;
   gap: 0.4rem;
+  min-height: 0;
 }
 
 .side-nav button {
@@ -1349,6 +1357,9 @@ textarea {
     border: 1px solid rgba(212, 222, 234, 0.18);
     position: sticky;
     top: 0.5rem;
+    height: auto;
+    max-height: none;
+    overflow: visible;
     z-index: 30;
   }
 
